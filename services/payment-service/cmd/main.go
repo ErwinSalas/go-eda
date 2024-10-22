@@ -9,9 +9,9 @@ import (
 
 	"github.com/ErwinSalas/go-eda/common/broker"
 	"github.com/ErwinSalas/go-eda/common/queue"
-	"github.com/ErwinSalas/go-eda/services/order-service/pkg/api"
-	"github.com/ErwinSalas/go-eda/services/order-service/pkg/app"
-	"github.com/ErwinSalas/go-eda/services/order-service/pkg/datastore"
+	"github.comErwinSalas/go-eda/services/payment-service/pkg/app"
+	"github.comErwinSalas/go-eda/services/payment-service/pkg/datastore"
+	"github.comErwinSalas/go-eda/services/payment-service/pkg/worker"
 )
 
 func initDb() (*sql.DB, error) {
@@ -47,38 +47,33 @@ func main() {
 	}
 	defer db.Close()
 
-	mysqlDatastore, err := datastore.NewDataStore(db)
+	mysqlDatastore, err := datastore.NewPaymentStore(db)
 	if err != nil {
 		fmt.Println("Error creating datastore:", err)
 		return
 	}
 
-	awsRegion := os.Getenv("AWS_REGION")
-	localstackEndpoint := os.Getenv("LOCALSTACK_ENDPOINT")
 	ordersTopic := os.Getenv("SNS_ORDER_TOPIC_ARN")
 	paymentsTopic := os.Getenv("SNS_PAYMENT_TOPIC_ARN")
 
-	paymentsQueue := os.Getenv("PAYMENTS_QUEUE_URL")
+	orderQueue := os.Getenv("ORDERS_QUEUE_URL")
+	awsRegion := os.Getenv("AWS_REGION")
+	localstackEndpoint := os.Getenv("LOCALSTACK_ENDPOINT")
 
-	orderPublisher, err := broker.NewSNSPublisherAWS(ordersTopic, awsRegion, localstackEndpoint)
+	completePaymentPublisher, err := broker.NewSNSPublisherAWS(paymentsTopic, awsRegion, localstackEndpoint)
 	if err != nil {
 		fmt.Println("Error creating publisher:", err)
 		return
 	}
 
-	paymentSubscriber, err := broker.NewSNSSubscriberAWS(paymentsTopic, awsRegion, localstackEndpoint)
+	ordersSubscriber, err := broker.NewSNSSubscriberAWS(ordersTopic, awsRegion, localstackEndpoint)
+	err = ordersSubscriber.Subscribe(orderQueue, "sqs")
 	if err != nil {
 		fmt.Println("Error subscribing to SNS topic:", err)
 		return
 	}
 
-	err = paymentSubscriber.Subscribe(paymentsQueue, "sqs")
-	if err != nil {
-		fmt.Println("Error subscribing to SNS topic:", err)
-		return
-	}
-
-	paymentsConsumer, err := queue.NewSQSService(paymentsQueue, awsRegion, localstackEndpoint)
+	ordersConsumer, err := queue.NewSQSService(orderQueue, awsRegion, localstackEndpoint)
 
 	if err != nil {
 		fmt.Println("Error subscribing to SNS topic:", err)
@@ -88,7 +83,10 @@ func main() {
 	ctx := context.Background()
 
 	mysqlDatastore.Migrate(ctx)
-	app := app.NewApp(mysqlDatastore, orderPublisher, paymentsConsumer)
+	app := app.NewApp(mysqlDatastore, completePaymentPublisher, ordersConsumer)
 
-	api.NewRouter(3001, *app)
+	NewPaymentWorker := worker.NewPaymentWorker(app)
+
+	NewPaymentWorker.ProcessOrderPayment(ctx)
+
 }

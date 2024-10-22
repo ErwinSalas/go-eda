@@ -1,4 +1,4 @@
-module github.com/ErwinSalas/go-eda/services/order-service
+module github.comErwinSalas/go-eda/services/payment-service
 
 go 1.21.12
 

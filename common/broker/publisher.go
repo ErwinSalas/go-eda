@@ -1,9 +1,10 @@
-package awsSNS
+package broker
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/ErwinSalas/go-eda/common/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
@@ -13,8 +14,8 @@ type SNSPublisherAWS struct {
 	topic  string
 }
 
-func NewSNSPublisherAWS(topic string) (*SNSPublisherAWS, error) {
-	snsClient, err := getClient()
+func NewSNSPublisherAWS(topic, region, endpoint string) (*SNSPublisherAWS, error) {
+	snsClient, err := utils.GetSNSClient(region, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS config: %v", err)
 	}
