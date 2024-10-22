@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # Order Service
+  order-service:
+    build:
+      context: ./services/order-service
+    ports:
+      - "8081:8080"
+    depends_on:
+      - mysql-order
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./services/payment-service
+    ports:
+      - "8082:8080"
+    depends_on:
+      - mysql-payment
+
+  # Food Preparation Service
+  food-preparation-service:
+    build:
+      context: ./services/food-preparation-service
+    ports:
+      - "8083:8080"
+    depends_on:
+      - mysql-food
+
+  # Delivery Service
+  delivery-service:
+    build:
+      context: ./services/delivery-service
+    ports:
+      - "8084:8080"
+    depends_on:
+      - mysql-delivery
+
+  # MySQL Databases for each service
+  mysql-order:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: orderdb
+    ports:
+      - "3306:3306"
+
+  mysql-payment:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: paymentdb
+    ports:
+      - "3307:3306"
+
+  mysql-food:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: fooddb
+    ports:
+      - "3308:3306"
+
+  mysql-delivery:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: deliverydb
+    ports:
+      - "3309:3306"
+
+  # LocalStack for SQS and SNS
+  localstack:
+    image: localstack/localstack
+    environment:
+      - SERVICES=sqs,sns
+    ports:
+      - "4566:4566"
+
+  # AWS CLI container to set up queues and topics
+  aws-cli:
+    image: amazon/aws-cli
+    command: /bin/sh -c "/init-sqs-sns.sh"
+    volumes:
+      - ./init-sqs-sns.sh:/init-sqs-sns.sh
+    depends_on:
+      - localstack
