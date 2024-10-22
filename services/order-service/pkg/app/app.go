@@ -7,11 +7,12 @@ import (
 
 type App struct {
 	Datastore      datastore.IDatastore
-	OrderPublisher awsSNS.SNSPublisherAWS
+	OrderPublisher *awsSNS.SNSPublisherAWS
 }
 
-func NewApp(datastore datastore.IDatastore) *App {
+func NewApp(datastore datastore.IDatastore, publisher *awsSNS.SNSPublisherAWS) *App {
 	return &App{
-		Datastore: datastore,
+		Datastore:      datastore,
+		OrderPublisher: publisher,
 	}
 }

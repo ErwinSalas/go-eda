@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/ErwinSalas/go-eda/common/awsSNS"
 	"github.com/ErwinSalas/go-eda/services/order-service/pkg/api"
 	"github.com/ErwinSalas/go-eda/services/order-service/pkg/app"
 	"github.com/ErwinSalas/go-eda/services/order-service/pkg/datastore"
@@ -50,21 +51,20 @@ func main() {
 		return
 	}
 
-	// client, err := InitSQS()
+	topic := os.Getenv("SNS_TOPIC_ARN")
+	awsRegion := os.Getenv("AWS_REGION")
+	localstackEndpoint := os.Getenv("LOCALSTACK_ENDPOINT")
 
-	// if err != nil {
-	// 	log.Fatal("Error initializing SQS")
-	// 	return
-	// }
+	publisher, err := awsSNS.NewSNSPublisherAWS(topic, awsRegion, localstackEndpoint)
+	if err != nil {
+		fmt.Println("Error creating publisher:", err)
+		return
+	}
 
-	// // queueURL := os.Getenv("QUEUE_URL")
-	// fmt.Println("queueURL:", queueURL)
-
-	// queueService := queue.NewSQSService(queueURL, client)
 	ctx := context.Background()
 
 	mysqlDatastore.Migrate(ctx)
-	app := app.NewApp(mysqlDatastore)
+	app := app.NewApp(mysqlDatastore, publisher)
 
 	api.NewRouter(3001, *app)
 
